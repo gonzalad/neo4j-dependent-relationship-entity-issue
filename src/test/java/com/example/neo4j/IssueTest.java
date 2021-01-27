@@ -3,7 +3,6 @@ package com.example.neo4j;
 import com.example.neo4j.containers.Neo4j;
 import com.example.neo4j.entities.ContextEntity;
 import com.example.neo4j.entities.NodeEntity;
-import com.example.neo4j.entities.RelationEntity;
 import com.example.neo4j.service.NodeService;
 import com.example.neo4j.service.Tree;
 import org.junit.jupiter.api.Test;
@@ -16,7 +15,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -29,45 +27,43 @@ class IssueTest {
     private NodeService service;
 
     @Test
-    void createSimpleTree() {
-
-        Tree tree = new Tree(new NodeEntity());
-        Tree saved = service.saveTree(tree);
-
-        assertThat(saved).isNotNull();
-        assertThat(saved.getRoot().getUuid()).isNotNull();
-
-        Optional<Tree> found = service.findTree(saved.getRoot().getUuid());
-
-        assertThat(found).isPresent();
-        assertThat(found.orElseThrow().getRoot().getUuid()).isEqualTo(saved.getRoot().getUuid());
-    }
-
-    @Test
-    void createTreeWithContext() {
-
+    void createAndUpdateTreeWithContext() {
         NodeEntity root = new NodeEntity();
         NodeEntity child = new NodeEntity();
         root.addChild(child);
+        Tree tree = new Tree(root);
+
+        // creation
+        Tree created = service.saveTree(tree);
+        assertThat(created.getRoot()).isNotNull();
+        assertThat(created.getRoot().getUuid()).isNotNull();
+
+        // update
+        created.getRoot().setCode("ROOT");
         ContextEntity context = new ContextEntity();
         context.setPath(List.of(root, child));
         context.setValue("some value");
-        Tree tree = new Tree(root, List.of(context));
-        Tree saved = service.saveTree(tree);
+        created.setContexts(List.of(context));
+        // created.getContexts().get(0).setValue("new value");
+        // created.getContexts().get(0).setPath(List.of(root, child));
+        Tree updated = service.saveTree(created); // -> clears relationshipEntityRegister
 
-        assertThat(saved).isNotNull();
-        assertThat(saved.getRoot().getUuid()).isNotNull();
-        assertThat(saved.getRoot().getChilds()).hasSize(1);
-        assertThat(saved.getContexts()).hasSize(1);
-        assertThat(saved.getContexts().get(0).getValue()).isEqualTo(context.getValue());
-    }
+        assertThat(updated).isNotNull();
+        assertThat(updated.getRoot().getUuid()).isEqualTo(created.getRoot().getUuid());
+        assertThat(updated.getRoot().getChilds()).hasSize(1);
+        assertThat(updated.getRoot().getCode()).isEqualTo("ROOT");
+        assertThat(updated.getContexts().get(0).getValue()).isEqualTo("some value");
 
-    @Test
-    void givenUUidNotExistsWhenFindThenVerifyEmpty() {
+        // 3. find
+        Optional<Tree> optFound = service.findTree(updated.getRoot().getUuid());
 
-        Optional<Tree> found = service.findTree(UUID.randomUUID());
-
-        assertThat(found).isEmpty();
+        assertThat(optFound).isNotEmpty();
+        Tree found = optFound.orElseThrow();
+        assertThat(found).isNotNull();
+        assertThat(found.getRoot().getUuid()).isEqualTo(created.getRoot().getUuid());
+        assertThat(found.getRoot().getChilds()).hasSize(1);
+        assertThat(updated.getRoot().getCode()).isEqualTo("ROOT");
+        assertThat(updated.getContexts().get(0).getValue()).isEqualTo("some value");
     }
 
     @TestConfiguration

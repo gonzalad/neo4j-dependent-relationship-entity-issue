@@ -27,6 +27,11 @@ public class NodeService {
     public Tree saveTree(Tree tree) {
         initializeUuidIfNeeded(tree);
         NodeEntity savedNode = nodeRepository.save(tree.getRoot());
+        //
+        // nodeRepository.findTree(tree.getRoot().getUuid());
+        // contextRepository.findAllContextByRoot(tree.getRoot().getUuid());
+        // tree.getContexts().get(0).setPath(tree.getRoot().selfAndDescendants().collect(Collectors.toList()));
+        //
         Iterable<ContextEntity> savedContextIterable = contextRepository.saveAll(tree.getContexts());
         return new Tree(savedNode, toList(savedContextIterable));
     }

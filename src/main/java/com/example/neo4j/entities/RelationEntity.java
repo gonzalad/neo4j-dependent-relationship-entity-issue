@@ -17,6 +17,9 @@ public class RelationEntity {
     @EndNode
     private NodeEntity node;
 
+    public RelationEntity() {
+    }
+
     public void setNode(NodeEntity node) {
         this.node = node;
     }
