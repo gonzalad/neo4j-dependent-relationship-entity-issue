@@ -4,7 +4,6 @@ import com.example.neo4j.containers.Neo4j;
 import com.example.neo4j.entities.Actor;
 import com.example.neo4j.entities.Movie;
 import com.example.neo4j.entities.Role;
-import com.example.neo4j.repository.ActorRepository;
 import org.junit.jupiter.api.Test;
 import org.neo4j.ogm.session.Session;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +15,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,13 +24,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class IssueTest {
 
     @Autowired
-    private ActorRepository repository;
-
-    @Autowired
     private Session session;
 
     @Test
-    void createAndUpdateTreeWithContext() {
+    void entityOrRelationshipEntityDetachedAfterUpdate() {
         Movie movie = new Movie();
         movie.setTitle("Lord of the rings");
         Role role = new Role();
@@ -42,19 +37,25 @@ class IssueTest {
         actor.setName("Christopher Lee");
         actor.addPlayedIn(role);
 
-        Actor savedActor = repository.save(actor);
-        assertThat(savedActor).isNotNull();
-        assertThat(savedActor.getId()).isNotNull();
-        assertThat(savedActor.getPlayedIn()).hasSize(1);
+        session.save(actor);
+        assertThat(actor).isNotNull();
+        assertThat(actor.getId()).isNotNull();
+        assertThat(actor.getPlayedIn()).hasSize(1);
 
-        Optional<Actor> loadedActor = repository.findActor(savedActor.getId());
-        assertThat(loadedActor).isPresent();
-        assertThat(loadedActor.get().getId()).isEqualTo(savedActor.getId());
-        assertThat(loadedActor.get().getPlayedIn()).hasSize(1);
+        runReadQuery(actor);
+        assertThat(actor.getPlayedIn()).hasSize(1);
 
-        runReadQuery(savedActor);
-        assertThat(savedActor.getPlayedIn()).hasSize(1);
-        assertThat(loadedActor.get().getPlayedIn()).hasSize(1);
+        // this second save detaches an entity or relationshipEntity
+        // we'll get a bad result on next query
+        actor.setName("name changed");
+        session.save(actor);
+        assertThat(actor).isNotNull();
+        assertThat(actor.getId()).isNotNull();
+        assertThat(actor.getPlayedIn()).hasSize(1);
+
+        runReadQuery(actor);
+        // fails, we return childs = 2
+        assertThat(actor.getPlayedIn()).hasSize(1);
     }
 
     private void runReadQuery(Actor entity) {
