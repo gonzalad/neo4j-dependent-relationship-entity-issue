@@ -5,6 +5,9 @@ import org.neo4j.ogm.annotation.Id;
 import org.neo4j.ogm.annotation.NodeEntity;
 import org.neo4j.ogm.annotation.Relationship;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Sample from https://docs.spring.io/spring-data/neo4j/docs/5.3.6.RELEASE/reference/html/#reference:annotating-entities:relationship-entity
  */
@@ -16,7 +19,7 @@ public class Actor {
     private Long id;
 
     @Relationship(type="PLAYED_IN")
-    private Role playedIn;
+    private List<Role> playedIn;
 
     private String name;
 
@@ -28,13 +31,16 @@ public class Actor {
         this.id = id;
     }
 
-    public Role getPlayedIn() {
+    public List<Role> getPlayedIn() {
         return playedIn;
     }
 
-    public void setPlayedIn(Role playedIn) {
-        this.playedIn = playedIn;
-        this.playedIn.setActor(this);
+    public void addPlayedIn(Role playedIn) {
+        if (this.playedIn == null) {
+            this.playedIn = new ArrayList<>();
+        }
+        playedIn.setActor(this);
+        this.playedIn.add(playedIn);
     }
 
     public String getName() {

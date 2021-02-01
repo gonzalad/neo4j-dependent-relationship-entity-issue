@@ -40,17 +40,21 @@ class IssueTest {
         role.setMovie(movie);
         Actor actor = new Actor();
         actor.setName("Christopher Lee");
-        actor.setPlayedIn(role);
+        actor.addPlayedIn(role);
 
         Actor savedActor = repository.save(actor);
         assertThat(savedActor).isNotNull();
         assertThat(savedActor.getId()).isNotNull();
+        assertThat(savedActor.getPlayedIn()).hasSize(1);
 
         Optional<Actor> loadedActor = repository.findActor(savedActor.getId());
         assertThat(loadedActor).isPresent();
         assertThat(loadedActor.get().getId()).isEqualTo(savedActor.getId());
+        assertThat(loadedActor.get().getPlayedIn()).hasSize(1);
 
         runReadQuery(savedActor);
+        assertThat(savedActor.getPlayedIn()).hasSize(1);
+        assertThat(loadedActor.get().getPlayedIn()).hasSize(1);
     }
 
     private void runReadQuery(Actor entity) {
