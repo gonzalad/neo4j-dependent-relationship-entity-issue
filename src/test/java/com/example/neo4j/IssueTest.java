@@ -1,11 +1,12 @@
 package com.example.neo4j;
 
 import com.example.neo4j.containers.Neo4j;
-import com.example.neo4j.entities.ContextEntity;
-import com.example.neo4j.entities.NodeEntity;
-import com.example.neo4j.service.NodeService;
-import com.example.neo4j.service.Tree;
+import com.example.neo4j.entities.Actor;
+import com.example.neo4j.entities.Movie;
+import com.example.neo4j.entities.Role;
+import com.example.neo4j.repository.ActorRepository;
 import org.junit.jupiter.api.Test;
+import org.neo4j.ogm.session.Session;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -13,7 +14,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,46 +26,39 @@ import static org.assertj.core.api.Assertions.assertThat;
 class IssueTest {
 
     @Autowired
-    private NodeService service;
+    private ActorRepository repository;
+
+    @Autowired
+    private Session session;
 
     @Test
     void createAndUpdateTreeWithContext() {
-        NodeEntity root = new NodeEntity();
-        NodeEntity child = new NodeEntity();
-        root.addChild(child);
-        Tree tree = new Tree(root);
+        Movie movie = new Movie();
+        movie.setTitle("Lord of the rings");
+        Role role = new Role();
+        role.setTitle("Saruman");
+        role.setMovie(movie);
+        Actor actor = new Actor();
+        actor.setName("Christopher Lee");
+        actor.setPlayedIn(role);
 
-        // creation
-        Tree created = service.saveTree(tree);
-        assertThat(created.getRoot()).isNotNull();
-        assertThat(created.getRoot().getUuid()).isNotNull();
+        Actor savedActor = repository.save(actor);
+        assertThat(savedActor).isNotNull();
+        assertThat(savedActor.getId()).isNotNull();
 
-        // update
-        created.getRoot().setCode("ROOT");
-        ContextEntity context = new ContextEntity();
-        context.setPath(List.of(root, child));
-        context.setValue("some value");
-        created.setContexts(List.of(context));
-        // created.getContexts().get(0).setValue("new value");
-        // created.getContexts().get(0).setPath(List.of(root, child));
-        Tree updated = service.saveTree(created); // -> clears relationshipEntityRegister
+        Optional<Actor> loadedActor = repository.findActor(savedActor.getId());
+        assertThat(loadedActor).isPresent();
+        assertThat(loadedActor.get().getId()).isEqualTo(savedActor.getId());
 
-        assertThat(updated).isNotNull();
-        assertThat(updated.getRoot().getUuid()).isEqualTo(created.getRoot().getUuid());
-        assertThat(updated.getRoot().getChilds()).hasSize(1);
-        assertThat(updated.getRoot().getCode()).isEqualTo("ROOT");
-        assertThat(updated.getContexts().get(0).getValue()).isEqualTo("some value");
+        runReadQuery(savedActor);
+    }
 
-        // 3. find
-        Optional<Tree> optFound = service.findTree(updated.getRoot().getUuid());
-
-        assertThat(optFound).isNotEmpty();
-        Tree found = optFound.orElseThrow();
-        assertThat(found).isNotNull();
-        assertThat(found.getRoot().getUuid()).isEqualTo(created.getRoot().getUuid());
-        assertThat(found.getRoot().getChilds()).hasSize(1);
-        assertThat(updated.getRoot().getCode()).isEqualTo("ROOT");
-        assertThat(updated.getContexts().get(0).getValue()).isEqualTo("some value");
+    private void runReadQuery(Actor entity) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("id", entity.getId());
+        session.query("MATCH path = (a:Actor)-[:PLAYED_IN*0..]->()"
+                + " WHERE id(a) = $id"
+                + " RETURN nodes(path), relationships(path)", params);
     }
 
     @TestConfiguration

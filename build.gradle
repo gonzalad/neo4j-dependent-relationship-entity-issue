@@ -30,6 +30,11 @@ dependencyManagement {
 	}
 }
 
+compileJava {
+	// garde les nom des paramètres des méthodes à la compilation
+	options.compilerArgs << '-parameters'
+}
+
 test {
 	useJUnitPlatform()
 }
