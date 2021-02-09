@@ -61,7 +61,7 @@ class IssueTest {
     private void runReadQuery(Actor entity) {
         Map<String, Object> params = new HashMap<>();
         params.put("id", entity.getId());
-        session.query("MATCH path = (a:Actor)-[:PLAYED_IN*0..]->()"
+        session.query("MATCH /*+ OGM_READ_ONLY */ path = (a:Actor)-[:PLAYED_IN*0..]->()"
                 + " WHERE id(a) = $id"
                 + " RETURN nodes(path), relationships(path)", params);
     }
